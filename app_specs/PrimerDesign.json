@@ -1,0 +1,237 @@
+{
+    "id": "PrimerDesign",
+    "script": "App-PrimerDesign",
+    "label": "Primer Design",
+    "description": "Use Primer3 to design primers to given sequence",
+    "default_memory": "4G",
+    "parameters": [
+        {
+            "id":"output_file",
+            "label":"File Basename",
+            "required": 1,
+            "desc":"Basename for the generated output files.",
+            "type":"wsid"
+        }
+        {
+            "id": "output_path",
+            "label": "Output Folder",
+            "required": 1,
+            "desc": "Path to which the output will be written.",
+            "type": "folder"
+        },
+        {
+            "id": "SEQUENCE_ID",
+            "label": "Sequence ID",
+            "required": 1,
+            "type": "string"
+        },
+        {
+            "id": "SEQUENCE_TEMPLATE",
+            "label": "Nucleotide Sequence or (BVBRC Seq Id)",
+            "required": 1,
+            "type": "string"
+        },
+        {
+            "id": "SEQUENCE_TARGET",
+            "label": "Region that primers must flank",
+            "required": 0,
+            "allow_multiple": 1,
+            "type": "seq_region",
+            "seq_region" : [
+                {
+                    "id": “start”,
+                    "required": 1,
+                    "label": “start”,
+                    "desc": “start”,
+                    "type": “int”
+                },
+                {
+                    "id": “length”,
+                    "required": 1,
+                    "label": “length”,
+                    "desc": “length”,
+                    "type": “int”
+                }
+            ]
+        },
+        {
+            "id": "SEQUENCE_INCLUDED_REGION",
+            "label": "Region where primers can be picked",
+            "required": 0,
+            "type" : "seq_region",
+            "seq_region" : [
+                {
+                    "id": “start”,
+                    "required": 1,
+                    "label": “start”,
+                    "desc": “start”,
+                    "type": “int”
+                },
+                {
+                    "id": “length”,
+                    "required": 1,
+                    "label": “length”,
+                    "desc": “length”,
+                    "type": “int”
+                }
+            ]
+        },
+        {
+            "id": "SEQUENCE_EXCLUDED_REGION",
+            "label": "Region where primers cannot overlap",
+            "required": 0,
+            "type" : "seq_region",
+            "seq_region" : [
+                {
+                    "id": “start”,
+                    "required": 1,
+                    "label": “start”,
+                    "desc": “start”,
+                    "type": “int”
+                },
+                {
+                    "id": “length”,
+                    "required": 1,
+                    "label": “length”,
+                    "desc": “length”,
+                    "type": “int”
+                }
+            ]
+        },
+        {
+            "id": "SEQUENCE_OVERLAP_JUNCTION_LIST",
+            "label": "Start position and length of region that primers must flank",
+            "required": 0,
+            "allow_multiple": 1,
+            "type" : "seq_region",
+            "seq_region" : [
+                {
+                    "id": “start”,
+                    "required": 1,
+                    "label": “start”,
+                    "desc": “start”,
+                    "type": “int”
+                },
+                {
+                    "id": “length”,
+                    "required": 1,
+                    "label": “length”,
+                    "desc": “length”,
+                    "type": “int”
+                }
+            ]
+        },
+        {
+            "id": "PRIMER_PRODUCT_SIZE_RANGE",
+            "label": "Min, max product size",
+            "required": 0,
+            "allow_multiple": 1,
+            "type" : "min_max",
+            "min_max" : [
+                {
+                    "id": “minimum”,
+                    "required": 1,
+                    "label": “minimum”,
+                    "desc": “minimum”,
+                    "type": “int”
+                },
+                {
+                    "id": “maximum”,
+                    "required": 1,
+                    "label": “maximum”,
+                    "desc": “maximum”,
+                    "type": “int”
+                }
+            ]
+        },
+        {
+            "id": "PRIMER_NUM_RETURN",
+            "label": "Max num primer pairs to report",
+            "required": 0,
+            "type": "integer"
+        },
+        {
+            "id": "PRIMER_MIN_SIZE",
+            "label": "Min primer length",
+            "required": 0,
+            "type": "integer"
+        },
+        {
+            "id": "PRIMER_OPT_SIZE",
+            "label": "Optimal primer length",
+            "required": 0,
+            "type": "integer"
+        },
+        {
+            "id": "PRIMER_MAX_SIZE",
+            "label": "Maximum primer length",
+            "required": 0,
+            "type": "integer"
+        },
+        {
+            "id": "PRIMER_MAX_TM",
+            "label": "Maximum primer melting temperature",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_MIN_TM",
+            "label": "Minimum primer melting temperature",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_OPT_TM",
+            "label": "Optimal primer melting temperature",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_PAIR_MAX_DIFF_TM",
+            "label": "Max Tm difference of paired primers",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_MAX_GC",
+            "label": "Maximum primer GC percentage",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_MIN_GC",
+            "label": "Minimum primer GC percentage",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_OPT_GC",
+            "label": "Optimal primer GC percentage",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_SALT_MONOVALENT",
+            "label": "Concentration of monovalent cations (mM)",
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_SALT_DIVALENT",
+            "label": "Concentration of divalent cations (mM)"
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_DNA_CONC",
+            "label": "Annealing Oligo Concentration (nM)"
+            "required": 0,
+            "type": "number"
+        },
+        {
+            "id": "PRIMER_DNTP_CONC",
+            "label": "Concentration of dNTPs (mM)"
+            "required": 0,
+            "type": "number"
+        }
+}
