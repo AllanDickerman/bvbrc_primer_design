@@ -11,7 +11,7 @@
             "required": 1,
             "desc":"Basename for the generated output files.",
             "type":"wsid"
-        }
+        },
         {
             "id": "output_path",
             "label": "Output Folder",
@@ -33,69 +33,34 @@
         },
         {
             "id": "SEQUENCE_TARGET",
-            "label": "Region that primers must flank",
+            "label": "Amplification target",
+            "desc": "Start/stop of region that primers must flank",
             "required": 0,
             "allow_multiple": 1,
-            "type": "seq_region",
-            "seq_region" : [
-                {
-                    "id": “start”,
-                    "required": 1,
-                    "label": “start”,
-                    "desc": “start”,
-                    "type": “int”
-                },
-                {
-                    "id": “length”,
-                    "required": 1,
-                    "label": “length”,
-                    "desc": “length”,
-                    "type": “int”
-                }
+            "type": "array",
+            "items" : [
+                { "type" : "number" },
+                { "type" : "number" }
             ]
-        },
+        },                
         {
             "id": "SEQUENCE_INCLUDED_REGION",
             "label": "Region where primers can be picked",
             "required": 0,
-            "type" : "seq_region",
-            "seq_region" : [
-                {
-                    "id": “start”,
-                    "required": 1,
-                    "label": “start”,
-                    "desc": “start”,
-                    "type": “int”
-                },
-                {
-                    "id": “length”,
-                    "required": 1,
-                    "label": “length”,
-                    "desc": “length”,
-                    "type": “int”
-                }
+            "type": "array",
+            "items" : [
+                { "type" : "number" },
+                { "type" : "number" }
             ]
         },
         {
             "id": "SEQUENCE_EXCLUDED_REGION",
             "label": "Region where primers cannot overlap",
             "required": 0,
-            "type" : "seq_region",
-            "seq_region" : [
-                {
-                    "id": “start”,
-                    "required": 1,
-                    "label": “start”,
-                    "desc": “start”,
-                    "type": “int”
-                },
-                {
-                    "id": “length”,
-                    "required": 1,
-                    "label": “length”,
-                    "desc": “length”,
-                    "type": “int”
-                }
+            "type": "array",
+            "items" : [
+                { "type" : "number" },
+                { "type" : "number" }
             ]
         },
         {
@@ -103,22 +68,10 @@
             "label": "Start position and length of region that primers must flank",
             "required": 0,
             "allow_multiple": 1,
-            "type" : "seq_region",
-            "seq_region" : [
-                {
-                    "id": “start”,
-                    "required": 1,
-                    "label": “start”,
-                    "desc": “start”,
-                    "type": “int”
-                },
-                {
-                    "id": “length”,
-                    "required": 1,
-                    "label": “length”,
-                    "desc": “length”,
-                    "type": “int”
-                }
+            "type": "array",
+            "items" : [
+                { "type" : "number" },
+                { "type" : "number" }
             ]
         },
         {
@@ -126,22 +79,10 @@
             "label": "Min, max product size",
             "required": 0,
             "allow_multiple": 1,
-            "type" : "min_max",
-            "min_max" : [
-                {
-                    "id": “minimum”,
-                    "required": 1,
-                    "label": “minimum”,
-                    "desc": “minimum”,
-                    "type": “int”
-                },
-                {
-                    "id": “maximum”,
-                    "required": 1,
-                    "label": “maximum”,
-                    "desc": “maximum”,
-                    "type": “int”
-                }
+            "type": "array",
+            "items" : [
+                { "type" : "number" },
+                { "type" : "number" }
             ]
         },
         {
@@ -218,20 +159,21 @@
         },
         {
             "id": "PRIMER_SALT_DIVALENT",
-            "label": "Concentration of divalent cations (mM)"
+            "label": "Concentration of divalent cations (mM)",
             "required": 0,
             "type": "number"
         },
         {
             "id": "PRIMER_DNA_CONC",
-            "label": "Annealing Oligo Concentration (nM)"
+            "label": "Annealing Oligo Concentration (nM)",
             "required": 0,
             "type": "number"
         },
         {
             "id": "PRIMER_DNTP_CONC",
-            "label": "Concentration of dNTPs (mM)"
+            "label": "Concentration of dNTPs (mM)",
             "required": 0,
             "type": "number"
         }
+    ]
 }
