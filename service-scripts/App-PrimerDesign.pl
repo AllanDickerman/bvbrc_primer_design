@@ -132,49 +132,23 @@ sub design_primers {
     if (defined $resultsHash{"PRIMER_PAIR_NUM_RETURNED"}){
         $pair_count = $resultsHash{"PRIMER_PAIR_NUM_RETURNED"};
     }
-	
-	my $html = "<html>\n"; #"Content-type: text/html\n"; #mainResultsHTML( \%completeParameters, \%resultsHash ), "\n";
-    # Write some help if no primers found
-    if ($pair_count == 0){
-        $html .= "<h3>No Primer Pairs Found</h3>\n";       
-    } 
+    my $html = "<html>\n";
+    
+    if ($pair_count > 0) {
+        my %html_param;
+        $html_param{right_primer_color} = "rgb(250,240,75)";
+        $html_param{left_primer_color} = "#ccccff";
+        $html_param{row_alt_color} = "#dddddd";
+        $html_param{row_highlight_color} = "#9999ff";
+        $html .= generate_javascript(\%html_param);
+
+        $html .= generate_html_all_pairs_view(\%resultsHash, \%html_param);	
+    }
     else {
-        $html .= qq{
-<script type="text/javascript">
-
-var cur_pair_index = 0;
-
-function show_primer_pair() {
-new_index = document.getElementById("select_pair_control").value;
-document.getElementById(\"PRIMER_PAIR_TABLE_\"+cur_pair_index).style.display="none";
-document.getElementById(\"PRIMER_PAIR_TABLE_\"+new_index).style.display="block";
-document.getElementById(\"sequence_for_pair_\"+cur_pair_index).style.display="none";
-document.getElementById(\"sequence_for_pair_\"+new_index).style.display="block";
-cur_pair_index = new_index;
-}
-</script>
-};
-# document.getElementById("primer_pair_label").innerHTML="Showing Primer Pair "+new_index;
-        $html .= "<b>Show Primer Pair:</b> <select id=\"select_pair_control\" onchange=\"show_primer_pair(this.value)\">\n";
-        for (my $i=0; $i < $pair_count; $i++) {
-            $html .= "<option value=\"$i\">$i</option>\n";
+        $html = "Problem: no primer pairs found.\n";
+        if ($resultsHash{ERROR}) {
+            $html .= "<p>Error: $resultsHash{ERROR}\n";
         }
-        $html .= "</select><p>\n";
-        #$html .= "<span id=\"primer_pair_label\" style=\"font-weight: bold\">Showing Primer Pair 0</span>\n";
-        $html .= "<div id=\"primer_pair_container\">\n";
-        #now add html table for each pair to javascript variable
-        for (my $index = 0; $index < $pair_count; $index++) {
-          $html .= create_primer_pair_table_html(\%resultsHash, $index, $index == 0); 
-        } 
-        $html .= "</div>\n"; 
-
-        $html .= "<p>Primers in template sequence:<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
-        #now add html table for each pair to javascript variable
-        for (my $index = 0; $index < $pair_count; $index++) {
-          $html .= create_primer_pair_on_sequence_html(\%resultsHash, $index); 
-        } 
-        $html .= "</div>\n"; 
-
     }
     $html .= "</html>\n";
     my $html_file = "$tmpdir/$params->{output_file}_report.html";
@@ -221,6 +195,143 @@ cur_pair_index = new_index;
     #print STDERR ("Start: $time1"."End:   $time2"r. "$tmpdir/DONE\n");
 }
 
+sub generate_javascript {
+    my $html_param = shift;
+    return qq(
+<script type="text/javascript">
+
+let cur_pair_index = 0;
+let right_primer_color="$html_param->{right_primer_color}";
+let left_primer_color="$html_param->{left_primer_color}";
+let alternate_row_colors = ["transparent", "$html_param->{row_alt_color}"];
+let row_highlight_color="$html_param->{row_highlight_color}";
+
+function update_current_pair() {
+new_index = document.getElementById("select_pair_control").value;
+
+old_row_color = alternate_row_colors[cur_pair_index % 2]
+old_row = document.getElementById("PRIMER_LEFT_"+cur_pair_index);
+old_row.style.backgroundColor=old_row_color;
+old_row.children[4].style.backgroundColor="transparent";
+
+old_row = document.getElementById("PRIMER_RIGHT_"+cur_pair_index);	
+old_row.style.backgroundColor=old_row_color;
+old_row.children[3].style.backgroundColor="transparent";
+
+new_row = document.getElementById("PRIMER_LEFT_"+new_index);
+new_row.style.backgroundColor=row_highlight_color;
+new_row.children[4].style.backgroundColor=left_primer_color;
+
+new_row = document.getElementById("PRIMER_RIGHT_"+new_index);
+new_row.style.backgroundColor=row_highlight_color;
+new_row.children[3].style.backgroundColor=right_primer_color;
+
+document.getElementById("sequence_for_pair_"+cur_pair_index).style.display="none";
+document.getElementById("sequence_for_pair_"+new_index).style.display="block";
+
+document.getElementById("primer_pair_id").innerHTML=new_index;
+document.getElementById("pair_data_"+cur_pair_index).style.backgroundColor="transparent";
+document.getElementById("pair_data_"+new_index).style.backgroundColor=row_highlight_color;
+
+cur_pair_index = new_index;
+}
+
+</script>
+)
+}
+
+sub generate_html_all_pairs_view {
+    my $results = shift;
+    my $html_param = shift;
+    my $pair_count = $results->{PRIMER_PAIR_NUM_RETURNED};
+    my $html .= "<div id=\"primer3_results_container\" onload='update_current_pair(0)'>\n";
+    $html .= "<b>Show Primer Pair:</b> <select id=\"select_pair_control\" onchange='update_current_pair(this.value)'>\n";
+    for (my $i=0; $i < $pair_count; $i++) {
+        $html .= "<option value=\"$i\">$i</option>\n";
+    }
+    $html .= "</select><p>\n";
+
+    $html .= "<table class='bvbrc_primer_table' id='PRIMER_PAIR_TABLE'>\n";
+    $html .= "<tr><th>Sel</th><th>Dir</th><th>Start</th><th>Length</th><th>Sequence</th><th>Tm</th><th>GC</th><th>Any</th><th>End</th><th>3' Stab</th><th>Penalty</th></tr>\n";
+    for my $primer_index (0 .. $pair_count-1) {
+        my $row_color = $primer_index % 2 ? $html_param->{row_alt_color} : "transparent";
+        $row_color = $html_param->{row_highlight_color} unless $primer_index;
+        for my $dir ("LEFT", "RIGHT") {
+            my $key_prefix = "PRIMER_${dir}_$primer_index";
+            $html .= "<tr id=\"$key_prefix\" style=\"background-color:$row_color\">";
+            if ($dir eq 'LEFT') {
+                $html .= "<td rowspan='2'>$primer_index</td>"; 
+            }
+            $html .= "<td>$dir</td>";
+            my ($start, $length) = split(",", $results->{$key_prefix});
+            $html .= "<td>$start</td>";
+            $html .= "<td>$length</td>";
+            my $seq_bg_color = "transparent";
+            if ($primer_index == 0) {
+                $seq_bg_color = $dir eq "LEFT" ? $html_param->{left_primer_color} : $html_param->{right_primer_color};
+            }
+            $html .= "<td style='background-color:$seq_bg_color'>" . $results->{$key_prefix . "_SEQUENCE"} . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_TM"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_GC_PERCENT"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_ANY"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_END"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_END_STABILITY"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_PENALTY"}) . "</td>";
+            $html .= "</tr>\n";
+        }
+    }
+    $html .= "</table>\n";
+
+    $html .= "<p>Statistics for primer pair <span id='primer_pair_id'>0</span>\n";
+    $html .= "<table  onload='update_current_pair()'>\n";
+    $html .= "<tr><th>product Size</th><th>End Coml.</th><th>Any Compl.</th><th>Penalty</th></tr>\n";
+    for my $pair_index (0 .. $pair_count-1) {
+        my $row_color = $pair_index % 2 ? $html_param->{row_alt_color} : "transparent";
+        $html .= "<tr id='pair_data_$pair_index' style='background-color:$row_color'>";
+        my $prefix = "PRIMER_PAIR_$pair_index";
+        $html .= "<td>".$results->{$prefix . "_PRODUCT_SIZE"}."</td>";
+        $html .= "<td>".$results->{$prefix . "_COMPL_END_TH"}."</td>";
+        $html .= "<td>".$results->{$prefix . "_COMPL_ANY_TH"}."</td>";
+        $html .= "<td>".$results->{$prefix . "_PENALTY"}."</td></tr>\n";
+    }
+    $html .= "</table>\n";
+    $html .= "<p>Primers in template sequence:<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
+    #now add html table for each pair to javascript variable
+    for (my $index = 0; $index < $pair_count; $index++) {
+        $html .= create_primer_pair_on_sequence_html($results, $index, $index == 0); 
+    } 
+    $html .= "</div></div>\n"; 
+    return $html;
+}
+
+
+sub generate_html_one_pair_view {
+    my $results = shift;
+    my $pair_count = $results->{PRIMER_PAIR_NUM_RETURNED};
+    my $html .= "<b>Show Primer Pair:</b> <select id=\"select_pair_control\" onchange=\"update_current_pair(this.value)\">\n";
+    for (my $i=0; $i < $pair_count; $i++) {
+        $html .= "<option value=\"$i\">$i</option>\n";
+    }
+    $html .= "</select><p>\n";
+    #$html .= "<span id=\"primer_pair_label\" style=\"font-weight: bold\">Showing Primer Pair 0</span>\n";
+    $html .= "<div id=\"primer_pair_container\">\n";
+    #now add html table for each pair to javascript variable
+    for (my $index = 0; $index < $pair_count; $index++) {
+      $html .= create_primer_pair_table_html($results, $index, $index == 0); 
+    } 
+    $html .= "</div>\n"; 
+
+    $html .= "<p>Primers in template sequence:<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
+    #now add html table for each pair to javascript variable
+    for (my $index = 0; $index < $pair_count; $index++) {
+      $html .= create_primer_pair_on_sequence_html($results, $index, $index == 0); 
+    } 
+    $html .= "</div>\n"; 
+    return $html
+}
+
+    
+
 sub create_primer_pair_table_html {
   my ($results, $primer_index, $visibility) = @_; 
 
@@ -250,6 +361,7 @@ sub create_primer_pair_table_html {
   $tableHTML .= "</table>\n";
   return $tableHTML;
 }
+
 ###################################################
 # divHTMLsequence: Prints out the sequence nicely # 
 ###################################################
@@ -262,6 +374,7 @@ sub create_primer_pair_on_sequence_html {
    
   $results = shift;
   $pair_to_show = shift;
+  my $is_visible = shift;
 
   $sequence = $results->{"SEQUENCE_TEMPLATE"};
   $format = $sequence;
@@ -316,9 +429,8 @@ sub create_primer_pair_on_sequence_html {
   ## Handy for testing:
   #  $sequence = $format;
 
-  $tableHTML = "<table class=\"primer3plus_table_no_border\" id=\"sequence_for_pair_$pair_to_show\" style=\"display:";
-  $tableHTML .= $pair_to_show eq 0 ? "block" : "none";
-  $tableHTML .= "\">";
+  my $display_style = $is_visible ? "block" : "none";
+  $tableHTML = "<table class=\"primer3plus_table_no_border\" id=\"sequence_for_pair_$pair_to_show\" style=\"display: $display_style\">";
   $tableHTML .= qq{
      <colgroup>
        <col width="13%" style="text-align: right;">
