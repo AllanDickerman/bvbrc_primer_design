@@ -81,20 +81,9 @@ sub design_primers {
     my $cwd = getcwd();
     #chdir("/homes/allan/git/dev_container/modules/bvbrc_primer_design/primer3plus-2.5.0/cgi-bin"); 
     chdir($tmpdir);
-    #my %defaultSettings = getDefaultSettings();
-    #for my $key (keys %defaultSettings) {
-    #    print STDERR "DefSet: $key $defaultSettings{$key}\n";
-    #}
-    #print STDERR "\n";
-    # Add missing parameters from the defaultSettings
-    #my %completeParameters = constructCombinedHash( %defaultSettings, %$params );
-
-    # check for parameters which make no sense and correct them
-    #checkParameters(%completeParameters);
 
     #runPrimer3(\%completeParameters, \%defaultSettings, \%resultsHash);
     my $primer3_output_file = "$params->{output_file}_raw_output.txt";
-    #my @command = ("primer3_core --output $primer3_output_file $p3params_file");
     my $command = "primer3_core --output $primer3_output_file";
     print "run command: $command\n";
     open PROC, "|$command";
@@ -133,11 +122,44 @@ sub design_primers {
         $pair_count = $resultsHash{"PRIMER_PAIR_NUM_RETURNED"};
     }
     my $html = "<html>\n";
-    
+
+    $html .= qq(<head>
+<style>
+h3  {
+    font-size: 1.2em;
+    margin-bottom: .2em;
+}
+
+table {
+    font-family:sans-serif; 
+    text-align:right
+    margin: .2em;
+}
+
+th {
+    padding: .1em;
+    text-align: left;
+}
+
+td {
+    padding-left: .5em;
+    padding-right: .5em;
+}
+.primer3plus_left_primer { background-color: #ccccff }
+.primer3plus_right_primer { background-color: rgb(250,240,75) }
+.primer3plus_target_sequence { background-color: #ccffcc }
+
+
+</style>
+</head>
+<body>
+);
+
     if ($pair_count > 0) {
         my %html_param;
         $html_param{right_primer_color} = "rgb(250,240,75)";
         $html_param{left_primer_color} = "#ccccff";
+        $html_param{target_sequence_color} = "#ccffcc";
         $html_param{row_alt_color} = "#dddddd";
         $html_param{row_highlight_color} = "#9999ff";
         $html .= generate_javascript(\%html_param);
@@ -150,7 +172,7 @@ sub design_primers {
             $html .= "<p>Error: $resultsHash{ERROR}\n";
         }
     }
-    $html .= "</html>\n";
+    $html .= "</body></html>\n";
     my $html_file = "$tmpdir/$params->{output_file}_report.html";
     open F, ">$html_file";
     print F $html;
@@ -251,18 +273,18 @@ sub generate_html_all_pairs_view {
     }
     $html .= "</select></h3>\n";
 
-    $html .= "<table class='bvbrc_primer_table' id='PRIMER_PAIR_TABLE' style='font-family:sans-serif'>\n";
+    $html .= "<table id='PRIMER_PAIR_TABLE'>\n";
     $html .= "<tr><th>#</th>\n";
     $html .= "<th>Dir</th>\n";
     $html .= "<th title=\"0-based start position in target sequence.\">Start</th>\n";
     $html .= "<th title=\"Length of primer in bases.\">Length</th>\n";
     $html .= "<th title=\"Sequence of the primer.\">Sequence</th>\n";
     $html .= "<th title=\"The melting temperature for the selected oligo.\">&nbsp;T<sub>m</sub> &nbsp;</th>\n";
-    $html .= "<th title=\"Percent GC for the selected oligo.\">&nbsp;GC% &nbsp;</th>\n";
+    $html .= "<th title=\"Percent GC for the selected oligo.\">GC%</th>\n";
     $html .= "<th title=\"Tendency of a primer to bind to itself, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
     $html .= "<th title=\"The tendency of the 3'-END to bind an identical primer, allowing it to form a primer-dimer.\">End <br>Compl.</th>";
     $html .= "<th title=\"Delta G of disruption of the five 3' bases of the primer.\">3' <br>Stab</th>\n";
-    $html .= "<th title=\"See primer3 manual for details (primer3.org/manual.html).\">Penalty</th></tr>\n";
+    $html .= "<th title=\"Contribution of primer to pair penalty. Lower is better. See primer3.org/manual.html.\">Penalty</th></tr>\n";
     for my $primer_index (0 .. $pair_count-1) {
         my $row_color = $primer_index % 2 ? $html_param->{row_alt_color} : "transparent";
         $row_color = $html_param->{row_highlight_color} unless $primer_index;
@@ -291,14 +313,14 @@ sub generate_html_all_pairs_view {
         }
     }
     $html .= "</table>\n";
-    $html .= "Note that sequence indexes are zero-based.";
+    $html .= "<span style=\"font-size:0.7em\">Note that primer3 reports zero-based sequence start positions.</span>";
 
     $html .= "<h3>Statistics for Primer Pair: <span id='primer_pair_id'>0</span></h3>\n";
-    $html .= "<table  onload='update_current_pair()' style='font-family:sans-serif'>\n";
+    $html .= "<table  onload='update_current_pair()'>\n";
     $html .= "<tr><th>#</th><th title=\"Length of the PCR product.\">Product <br>Size</th>\n";
     $html .= "<th title=\"Tendency of the 3'-ENDs of a primer pair to bind to each other and extend, forming a primer-dimer.\">End <br>Compl.</th>\n";
     $html .= "<th title=\"Tendency of a primer pair to bind to each other, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
-    $html .= "<th title=\"See primer3 manual for details (primer3.org/manual.html).\"<th>Penalty</th></tr>\n";
+    $html .= "<th title=\"Lower is better. See primer3 manual for details (primer3.org/manual.html).\"<th>Penalty</th></tr>\n";
     for my $pair_index (0 .. $pair_count-1) {
         my $row_color = $pair_index % 2 ? $html_param->{row_alt_color} : "transparent";
         $row_color = $html_param->{row_highlight_color} unless $pair_index;
@@ -312,10 +334,17 @@ sub generate_html_all_pairs_view {
     }
     $html .= "</table>\n";
     $html .= "<h3>Primers in Template Sequence</h3>\n";
-    $html .= "<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
+    $html .= "<div id=\"sequence_container\">\n";
+    $html .= "<span style=\"font-size:0.7em\">Color key:\n";
+    $html .= "&nbsp;&nbsp<a class='primer3plus_left_primer'>Left primer</a>";
+    if ($results->{SEQUENCE_TARGET}) {
+        $html .= "&nbsp;&nbsp;<a class='primer3plus_target_sequence'>Target sequence</a>";
+    }
+    $html .= "&nbsp;&nbsp;<a class='primer3plus_right_primer'>Right primer</a>";
+    $html .= "</span>\n";
     #now add html table for each pair to javascript variable
     for (my $index = 0; $index < $pair_count; $index++) {
-        $html .= create_primer_pair_on_sequence_html($results, $index, $index == 0); 
+        $html .= create_primer_pair_on_sequence_html($results, $index, $index == 0, $html_param); 
     } 
     $html .= "</div></div>\n"; 
     return $html;
@@ -392,6 +421,7 @@ sub create_primer_pair_on_sequence_html {
   $results = shift;
   $pair_to_show = shift;
   my $is_visible = shift;
+  my $html_param = shift;
 
   $sequence = $results->{"SEQUENCE_TEMPLATE"};
   $format = $sequence;
@@ -447,7 +477,7 @@ sub create_primer_pair_on_sequence_html {
   #  $sequence = $format;
 
   my $display_style = $is_visible ? "block" : "none";
-  $tableHTML = "<table class=\"primer3plus_table_no_border\" id=\"sequence_for_pair_$pair_to_show\" style=\"display: $display_style\">";
+  $tableHTML = "<table id=\"sequence_for_pair_$pair_to_show\" style=\"display: $display_style; font-family:Courier,monospace\">";
   $tableHTML .= qq{
      <colgroup>
        <col width="13%" style="text-align: right;">
@@ -469,6 +499,10 @@ sub create_primer_pair_on_sequence_html {
        <td>};
      }
 
+     if ((($count % 10) eq 0) and !(($count % 50) eq 0)) {
+         $tableHTML .= qq{&nbsp;&nbsp;};
+     }
+
      if ($preFormat ne $baseFormat) {
          if ($preFormat ne "J") {
              $tableHTML .= qq{</a>};
@@ -480,19 +514,19 @@ sub create_primer_pair_on_sequence_html {
              $tableHTML .= qq{<a class="primer3plus_excluded_region">};
          }
          if ($baseFormat eq "T") {
-             $tableHTML .= qq{<a class="primer3plus_target">};
+             $tableHTML .= qq{<a class="primer3plus_target_sequence">};
          }
          if ($baseFormat eq "I") {
              $tableHTML .= qq{<a class="primer3plus_included_region">};
          }
          if ($baseFormat eq "F") {
-             $tableHTML .= qq{<a style="background-color:#ccccff; color:rgb(0,0,0);">};
+             $tableHTML .= qq{<a class="primer3plus_left_primer">};
          }
          if ($baseFormat eq "O") {
              $tableHTML .= qq{<a class="primer3plus_internal_oligo">};
          }
          if ($baseFormat eq "R") {
-             $tableHTML .= qq{<a style="background-color:rgb(250,240,75); color:rgb(0,0,0);">};
+             $tableHTML .= qq{<a class="primer3plus_right_primer">};
          }
          if ($baseFormat eq "B") {
              $tableHTML .= qq{<a class="primer3plus_left_right_primer">};
@@ -501,10 +535,6 @@ sub create_primer_pair_on_sequence_html {
              $tableHTML .= qq{<a class="primer3plus_primer_overlap_pos">};
          }
 
-     }
-
-     if ((($count % 10) eq 0) and !(($count % 50) eq 0)) {
-         $tableHTML .= qq{&nbsp;&nbsp;};
      }
 
      $tableHTML .= qq{$base};
