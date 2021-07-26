@@ -245,14 +245,24 @@ sub generate_html_all_pairs_view {
     my $html_param = shift;
     my $pair_count = $results->{PRIMER_PAIR_NUM_RETURNED};
     my $html .= "<div id=\"primer3_results_container\" onload='update_current_pair(0)'>\n";
-    $html .= "<b>Show Primer Pair:</b> <select id=\"select_pair_control\" onchange='update_current_pair(this.value)'>\n";
+    $html .= "<h3>Select Primer Pair:</b> <select id=\"select_pair_control\" onchange='update_current_pair(this.value)'>\n";
     for (my $i=0; $i < $pair_count; $i++) {
         $html .= "<option value=\"$i\">$i</option>\n";
     }
-    $html .= "</select><p>\n";
+    $html .= "</select></h3>\n";
 
-    $html .= "<table class='bvbrc_primer_table' id='PRIMER_PAIR_TABLE'>\n";
-    $html .= "<tr><th>Sel</th><th>Dir</th><th>Start</th><th>Length</th><th>Sequence</th><th>Tm</th><th>GC</th><th>Any</th><th>End</th><th>3' Stab</th><th>Penalty</th></tr>\n";
+    $html .= "<table class='bvbrc_primer_table' id='PRIMER_PAIR_TABLE' style='font-family:sans-serif'>\n";
+    $html .= "<tr><th>#</th>\n";
+    $html .= "<th>Dir</th>\n";
+    $html .= "<th title=\"0-based start position in target sequence.\">Start</th>\n";
+    $html .= "<th title=\"Length of primer in bases.\">Length</th>\n";
+    $html .= "<th title=\"Sequence of the primer.\">Sequence</th>\n";
+    $html .= "<th title=\"The melting temperature for the selected oligo.\">&nbsp;T<sub>m</sub> &nbsp;</th>\n";
+    $html .= "<th title=\"Percent GC for the selected oligo.\">&nbsp;GC% &nbsp;</th>\n";
+    $html .= "<th title=\"Tendency of a primer to bind to itself, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
+    $html .= "<th title=\"The tendency of the 3'-END to bind an identical primer, allowing it to form a primer-dimer.\">End <br>Compl.</th>";
+    $html .= "<th title=\"Delta G of disruption of the five 3' bases of the primer.\">3' <br>Stab</th>\n";
+    $html .= "<th title=\"See primer3 manual for details (primer3.org/manual.html).\">Penalty</th></tr>\n";
     for my $primer_index (0 .. $pair_count-1) {
         my $row_color = $primer_index % 2 ? $html_param->{row_alt_color} : "transparent";
         $row_color = $html_param->{row_highlight_color} unless $primer_index;
@@ -262,7 +272,7 @@ sub generate_html_all_pairs_view {
             if ($dir eq 'LEFT') {
                 $html .= "<td rowspan='2'>$primer_index</td>"; 
             }
-            $html .= "<td>$dir</td>";
+            $html .= "<td>".lc($dir)."</td>";
             my ($start, $length) = split(",", $results->{$key_prefix});
             $html .= "<td>$start</td>";
             $html .= "<td>$length</td>";
@@ -270,32 +280,39 @@ sub generate_html_all_pairs_view {
             if ($primer_index == 0) {
                 $seq_bg_color = $dir eq "LEFT" ? $html_param->{left_primer_color} : $html_param->{right_primer_color};
             }
-            $html .= "<td style='background-color:$seq_bg_color'>" . $results->{$key_prefix . "_SEQUENCE"} . "</td>";
-            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_TM"}) . "</td>";
-            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_GC_PERCENT"}) . "</td>";
-            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_ANY"}) . "</td>";
-            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_END"}) . "</td>";
+            $html .= "<td style='background-color:$seq_bg_color; font-family:Courier,monospace'>" . $results->{$key_prefix . "_SEQUENCE"} . "</td>";
+            $html .= "<td>" . sprintf("&nbsp;%.1f", $results->{$key_prefix . "_TM"}) . "</td>";
+            $html .= "<td>" . sprintf("&nbsp;%.1f", $results->{$key_prefix . "_GC_PERCENT"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_ANY_TH"}) . "</td>";
+            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_SELF_END_TH"}) . "</td>";
             $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_END_STABILITY"}) . "</td>";
-            $html .= "<td>" . sprintf("%.1f", $results->{$key_prefix . "_PENALTY"}) . "</td>";
+            $html .= "<td>" . sprintf("%.2f", $results->{$key_prefix . "_PENALTY"}) . "</td>";
             $html .= "</tr>\n";
         }
     }
     $html .= "</table>\n";
+    $html .= "Note that sequence indexes are zero-based.";
 
-    $html .= "<p>Statistics for primer pair <span id='primer_pair_id'>0</span>\n";
-    $html .= "<table  onload='update_current_pair()'>\n";
-    $html .= "<tr><th>product Size</th><th>End Coml.</th><th>Any Compl.</th><th>Penalty</th></tr>\n";
+    $html .= "<h3>Statistics for Primer Pair: <span id='primer_pair_id'>0</span></h3>\n";
+    $html .= "<table  onload='update_current_pair()' style='font-family:sans-serif'>\n";
+    $html .= "<tr><th>#</th><th title=\"Length of the PCR product.\">Product <br>Size</th>\n";
+    $html .= "<th title=\"Tendency of the 3'-ENDs of a primer pair to bind to each other and extend, forming a primer-dimer.\">End <br>Compl.</th>\n";
+    $html .= "<th title=\"Tendency of a primer pair to bind to each other, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
+    $html .= "<th title=\"See primer3 manual for details (primer3.org/manual.html).\"<th>Penalty</th></tr>\n";
     for my $pair_index (0 .. $pair_count-1) {
         my $row_color = $pair_index % 2 ? $html_param->{row_alt_color} : "transparent";
+        $row_color = $html_param->{row_highlight_color} unless $pair_index;
         $html .= "<tr id='pair_data_$pair_index' style='background-color:$row_color'>";
         my $prefix = "PRIMER_PAIR_$pair_index";
+        $html .= "<td>$pair_index</td>";
         $html .= "<td>".$results->{$prefix . "_PRODUCT_SIZE"}."</td>";
-        $html .= "<td>".$results->{$prefix . "_COMPL_END_TH"}."</td>";
-        $html .= "<td>".$results->{$prefix . "_COMPL_ANY_TH"}."</td>";
-        $html .= "<td>".$results->{$prefix . "_PENALTY"}."</td></tr>\n";
+        $html .= "<td>". sprintf("%.1f", $results->{$prefix . "_COMPL_END_TH"}) ."</td>";
+        $html .= "<td>". sprintf("%.1f", $results->{$prefix . "_COMPL_ANY_TH"}) ."</td>";
+        $html .= "<td>". sprintf("%.2f", $results->{$prefix . "_PENALTY"}) ."</td></tr>\n";
     }
     $html .= "</table>\n";
-    $html .= "<p>Primers in template sequence:<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
+    $html .= "<h3>Primers in Template Sequence</h3>\n";
+    $html .= "<div id=\"sequence_container\" style=\"font-family:Courier,monospace\">\n";
     #now add html table for each pair to javascript variable
     for (my $index = 0; $index < $pair_count; $index++) {
         $html .= create_primer_pair_on_sequence_html($results, $index, $index == 0); 
