@@ -14,9 +14,6 @@ use Bio::KBase::AppService::AppConfig;
 use Bio::KBase::AppService::AppScript;
 use Cwd;
 use URI::Escape;
-#use primer3plusFunctions;
-#use settings;
-#use HtmlFunctions;
 
 our $global_ws;
 our $global_token;
@@ -42,8 +39,8 @@ sub preflight
     my($app, $app_def, $raw_params, $params) = @_;
     print STDERR "preflight: num params=", scalar keys %$params, "\n";
     my $pf = {
-	cpu => 4,
-	memory => "32G",
+	cpu => 1,
+	memory => "16G",
 	runtime => 0,
 	storage => 0,
 	is_control_task => 0,
@@ -66,7 +63,7 @@ sub design_primers {
    
     run("echo $tmpdir && ls -ltr $tmpdir");
 
-    my $p3params_file = "$params->{output_file}_P3_parameters.txt";
+    my $p3params_file = "$params->{output_file}_Primer3_input.txt";
     open F, ">$tmpdir/$p3params_file";
     print STDERR "params->{parameters} = $params\n";
     for my $param (keys %{$params}) {
@@ -79,11 +76,9 @@ sub design_primers {
     close F;
 
     my $cwd = getcwd();
-    #chdir("/homes/allan/git/dev_container/modules/bvbrc_primer_design/primer3plus-2.5.0/cgi-bin"); 
     chdir($tmpdir);
 
-    #runPrimer3(\%completeParameters, \%defaultSettings, \%resultsHash);
-    my $primer3_output_file = "$params->{output_file}_raw_output.txt";
+    my $primer3_output_file = "$params->{output_file}_Primer3_output.txt";
     my $command = "primer3_core --output $primer3_output_file";
     print "run command: $command\n";
     open PROC, "|$command";
@@ -100,7 +95,6 @@ sub design_primers {
     #print STDERR "STDOUT:\n$out\n";
     #print STDERR "STDERR:\n$err\n";
     my %resultsHash = {};
-    #$resultsHash{"TEST1_KEY"}="VALUE";
     print STDERR "Now showing results from runPrimer3\n";
     open F, $primer3_output_file;
     while (<F>)
@@ -108,13 +102,8 @@ sub design_primers {
         chomp;
         my ($key, $val) = split("=", $_, '2');
         $resultsHash{$key} = $val;
-        print "results: $key\tvalue=$resultsHash{$key}\n";
+        print "results: $key\tvalue=$resultsHash{$key}\n" if $debug;
     }
-    print STDERR "Now show messages:\n";
-    #my @messages = getMessages();
-    #for my $msg (@messages) {
-    #    print "msg: $msg\n";
-    #}
     my $pair_count = 0;
     # Figure out if any primers were returned and
     # write a helping page if no primers are returned  
@@ -122,6 +111,15 @@ sub design_primers {
         $pair_count = $resultsHash{"PRIMER_PAIR_NUM_RETURNED"};
     }
     my $html = "<html>\n";
+
+
+    if ($pair_count > 0) {
+        my %html_param;
+        $html_param{right_primer_color} = "#ff9999";
+        $html_param{left_primer_color} = "#ffff66";
+        $html_param{target_sequence_color} = "#ccffcc";
+        $html_param{row_alt_color} = "#dddddd";
+        $html_param{row_highlight_color} = "#9999ff";
 
     $html .= qq(<head>
 <style>
@@ -145,38 +143,36 @@ td {
     padding-left: .5em;
     padding-right: .5em;
 }
-.primer3plus_left_primer { background-color: #ccccff }
-.primer3plus_right_primer { background-color: rgb(250,240,75) }
-.primer3plus_target_sequence { background-color: #ccffcc }
-
+.primer3plus_left_primer { background-color: $html_param{left_primer_color} }
+.primer3plus_right_primer { background-color: $html_param{right_primer_color} }
+.primer3plus_target_sequence { background-color: $html_param{target_sequence_color} }
 
 </style>
 </head>
 <body>
 );
 
-    if ($pair_count > 0) {
-        my %html_param;
-        $html_param{right_primer_color} = "rgb(250,240,75)";
-        $html_param{left_primer_color} = "#ccccff";
-        $html_param{target_sequence_color} = "#ccffcc";
-        $html_param{row_alt_color} = "#dddddd";
-        $html_param{row_highlight_color} = "#9999ff";
         $html .= generate_javascript(\%html_param);
 
         $html .= generate_html_all_pairs_view(\%resultsHash, \%html_param);	
     }
     else {
         $html = "Problem: no primer pairs found.\n";
-        if ($resultsHash{ERROR}) {
-            $html .= "<p>Error: $resultsHash{ERROR}\n";
+        
+        my $error_messages = "";
+        for my $key (sort keys %resultsHash) {
+            $error_messages .= "<li>$key:&nbsp;&nbsp;$resultsHash{$key}\n" if $key =~ /ERROR/i;
+        }
+        if ($error_messages) {
+            $html .= "<p>Error messages from Primer3:<ul>\n";
+            $html .= $error_messages;
+            $html .= "</ul>\n";
         }
     }
     $html .= "</body></html>\n";
     my $html_file = "$tmpdir/$params->{output_file}_report.html";
     open F, ">$html_file";
     print F $html;
-    #print F writeStatistics("primer3plus_run_primer3");
     close F;
 
     push @outputs, [$html_file, "html"];
