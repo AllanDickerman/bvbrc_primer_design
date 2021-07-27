@@ -130,7 +130,7 @@ h3  {
 
 table {
     font-family:sans-serif; 
-    text-align:right
+    text-align:right;
     margin: .2em;
 }
 
