@@ -22,13 +22,19 @@
         {
             "id": "SEQUENCE_ID",
             "label": "Sequence ID",
-            "required": 1,
+            "required": 0,
             "type": "string"
         },
         {
             "id": "SEQUENCE_TEMPLATE",
-            "label": "Nucleotide Sequence or (BVBRC Seq Id)",
-            "required": 1,
+            "label": "Nucleotide Sequence",
+            "required": 0,
+            "type": "string"
+        },
+        {
+            "id": "SEQUENCE_WORKSPACE_FASTA",
+            "label": "Workspace file with template sequence",
+            "required": 0,
             "type": "string"
         },
         {

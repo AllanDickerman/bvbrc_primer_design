@@ -62,6 +62,33 @@ sub design_primers {
     print STDERR "created temp dir: $tmpdir, cleanup = ", !$debug, "\n";
    
     run("echo $tmpdir && ls -ltr $tmpdir");
+    
+    if (exists $params->{SEQUENCE_WORKSPACE_FASTA}) {
+        my $fasta_file = $params->{SEQUENCE_WORKSPACE_FASTA};
+        $fasta_file =~ s/.*\///; #should yield basename
+        my @cmd = ("p3-cp", "ws:" . $params->{SEQUENCE_WORKSPACE_FASTA}, $fasta_file);
+        print STDERR "@cmd\n";
+        my $ok = IPC::Run::run(\@cmd);
+        if (!$ok)
+        {
+            warn "Error $? copying output with @cmd\n";
+        }
+        open F, $fasta_file;
+        my $seq = '';
+        $_ = <F>;
+        $_ =~ />(\S+)/ or warn "$fasta_file does not look like fasta";
+        print STDERR "Reading sequence from workspace file $params->{SEQUENCE_WORKSPACE_FASTA}\n";
+        print STDERR "setting SEQUENCE_ID to $1 from workspace file\n";
+        print STDERR "(was $params->{SEQUENCE_ID}\n" if $params->{SEQUENCE_ID};
+        $params->{SEQUENCE_ID} = $1;
+        while (<F>) {
+            last if /^>/;
+            chomp;
+            $seq .= $_;
+        }
+        $params->{SEQUENCE_TEMPLATE} = $seq;
+    }
+        
 
     my $p3params_file = "$params->{output_file}_Primer3_input.txt";
     open F, ">$tmpdir/$p3params_file";
@@ -130,8 +157,11 @@ h3  {
 
 table {
     font-family:sans-serif; 
-    text-align:right;
     margin: .2em;
+}
+
+table.numbers {
+    text-align:right;
 }
 
 th {
@@ -269,7 +299,7 @@ sub generate_html_all_pairs_view {
     }
     $html .= "</select></h3>\n";
 
-    $html .= "<table id='PRIMER_PAIR_TABLE'>\n";
+    $html .= "<table id='PRIMER_PAIR_TABLE' class='numbers'>\n";
     $html .= "<tr><th>#</th>\n";
     $html .= "<th>Dir</th>\n";
     $html .= "<th title=\"0-based start position in target sequence.\">Start</th>\n";
@@ -312,7 +342,7 @@ sub generate_html_all_pairs_view {
     $html .= "<span style=\"font-size:0.7em\">Note that primer3 reports zero-based sequence start positions.</span>";
 
     $html .= "<h3>Statistics for Primer Pair: <span id='primer_pair_id'>0</span></h3>\n";
-    $html .= "<table  onload='update_current_pair()'>\n";
+    $html .= "<table  onload='update_current_pair()' class='numbers'>\n";
     $html .= "<tr><th>#</th><th title=\"Length of the PCR product.\">Product <br>Size</th>\n";
     $html .= "<th title=\"Tendency of the 3'-ENDs of a primer pair to bind to each other and extend, forming a primer-dimer.\">End <br>Compl.</th>\n";
     $html .= "<th title=\"Tendency of a primer pair to bind to each other, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
