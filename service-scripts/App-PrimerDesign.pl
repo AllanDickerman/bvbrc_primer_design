@@ -62,9 +62,12 @@ sub design_primers {
     print STDERR "created temp dir: $tmpdir, cleanup = ", !$debug, "\n";
    
     run("echo $tmpdir && ls -ltr $tmpdir");
-    
-    if (exists $params->{SEQUENCE_WORKSPACE_FASTA}) {
-        my $fasta_file = $params->{SEQUENCE_WORKSPACE_FASTA};
+
+    if ($params->{input_type} eq "sequence_text") {
+        $params->{SEQUENCE_TEMPLATE} = $params->{sequence_input};
+    }
+    elsif ($params->{input_type} eq "workspace_fasta") {
+        my $fasta_file = $params->{sequence_input};
         $fasta_file =~ s/.*\///; #should yield basename
         my @cmd = ("p3-cp", "ws:" . $params->{SEQUENCE_WORKSPACE_FASTA}, $fasta_file);
         print STDERR "@cmd\n";
@@ -88,7 +91,20 @@ sub design_primers {
         }
         $params->{SEQUENCE_TEMPLATE} = $seq;
     }
-        
+    elsif ($params->{input_type} eq "database_id") {
+        print STDERR "Input type is 'database_id' which is not supported yet.";
+        exit(1);
+    }    
+    else {
+        print STDERR "Input type is '$params->{input_type}' which is not supported yet.";
+        exit(1);
+    }    
+
+    if ($params->{SEQUENCE_TEMPLATE} =~ /[[\]<>{}-]/) {
+        print STDERR "Need to handle sequence markups\n" if $debug;
+        handle_sequence_region_markup($params);
+    }
+
 
     my $p3params_file = "$params->{output_file}_Primer3_input.txt";
     open F, ">$tmpdir/$p3params_file";
@@ -626,6 +642,64 @@ sub addRegion {
   $formatString .= $stringEnd;
 
   return $formatString;
+}
+
+sub handle_sequence_region_markup {
+    my $params = shift;
+    my %delim_field = ('<>' => 'SEQUENCE_EXCLUDED_REGION',
+        '{}' => 'SEQUENCE_INCLUDED_REGION',
+        '[]' => 'SEQUENCE_TARGET',
+        '-'  => 'SEQUENCE_OVERLAP_JUNCTION_LIST' );
+    for my $delim (sort keys %delim_field) {
+        my $regex = "\\".substr($delim, 0, 1);
+        if ($params->{SEQUENCE_TEMPLATE} =~ /$regex/) {
+            extract_sequence_delim($params, $delim, $delim_field{$delim});
+        }
+    }
+    $params->{SEQUENCE_TEMPLATE} =~ s/[{}[\]<>-]//g;
+}
+
+sub extract_sequence_delim {
+    my ($params, $delim, $field) = @_;
+    my $regex = "[".join("\\", split('', $delim))."]";
+    my $other_delims = "{}[]<>-";
+    $other_delims =~ s/$regex//g;
+    my $other_regex = "[".join("\\", split('', $other_delims))."]";
+    print STDERR "extract_sequence_delim: delim=$delim field=$field regex=$regex other_regex=$other_regex\n" if $debug;
+    my $seq = $params->{SEQUENCE_TEMPLATE};
+    $seq =~ s/$other_regex//g;
+    #print STDERR "minus other delims: $seq\n" if $debug;
+    my @delim_positions;
+    my $offset_adjust = 0;
+    my $start = undef;
+    while ($seq =~ /$regex/g){
+        my $curpos = pos($seq);
+        $offset_adjust++;
+        print STDERR "\tgot $&, offset_adjust=$offset_adjust, start=$start\n" if $debug;
+
+        if ($& eq substr($delim, 0, 1)) { # an open delimiter
+            if (defined $start) {
+                print STDERR "Problem with sequence markup: two opens in a row $&\n";
+                return 1;
+            }
+            $start = pos($seq) - $offset_adjust;
+            if (length($delim) == 1) {
+                push @delim_positions, "$start";
+                $start = undef; # leave undefined because start-length is not needed for single delim
+            }
+        }
+        elsif ($& eq substr($delim, 1, 1)) { # a close delimiter
+            unless (defined $start) {
+                print STDERR "Problem with sequence markup: close without an open $&\n";
+                return 1;
+            }
+            my $length = pos($seq) - $offset_adjust - $start;
+            push @delim_positions, "$start,$length";
+        }
+    }
+    my $position_string = join(" ", @delim_positions);
+    print "\tbased on these delimiters ($delim) in input sequence, $field positions are $position_string\n";
+    $params->{$field} = $position_string;
 }
 
 sub run_cmd {

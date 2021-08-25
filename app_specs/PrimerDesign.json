@@ -20,20 +20,22 @@
             "type": "folder"
         },
         {
+            "id": "input_type",
+            "label": "text|workplace_file|seq_id",
+            "required": 1,
+            "desc": "How to interpret sequence_input.",
+            "type": "string"
+        },
+        {
+            "id": "sequence_input",
+            "label": "text|workplace file|seq_id",
+            "required": 1,
+            "desc": "Sequence which may be raw text, a workspace file, or a database identifier.",
+            "type": "string"
+        },
+        {
             "id": "SEQUENCE_ID",
             "label": "Sequence ID",
-            "required": 0,
-            "type": "string"
-        },
-        {
-            "id": "SEQUENCE_TEMPLATE",
-            "label": "Nucleotide Sequence",
-            "required": 0,
-            "type": "string"
-        },
-        {
-            "id": "SEQUENCE_WORKSPACE_FASTA",
-            "label": "Workspace file with template sequence",
             "required": 0,
             "type": "string"
         },
