@@ -1,0 +1,19 @@
+{
+    "output_path" : "/olson@patricbrc.org/PATRIC-QA/applications/App-PrimerDesign",
+    "output_file" : "no_valid_solution",
+    "input_type" : "sequence_text",
+    "sequence_input" : "atgacagcgctcatcgttggcgtcgcctgcctgttctccacgctgctcatctattcgggaacggtcatctcgtttctgcgcttcgagcatacgttgctgttcgtgggcaccttcgccgaaaccaccctgttggcggccacgctgttcggcgcgctgttcctcggcttgtcgctggcgggaaagcgcctgccgtccatgctgctgggcgccgggggcggcatgctgtgcctgtgctgcgcgctcgcgttcgcgtacttctcctggttcggcagcttgggtacggcgctgctcatcgcgcttgccgtggccgccaccctcggcgacgtgtgcttggcgctcacgtgggggcgcatctgcgcgcgtttcaaaatcaagcgcgcgctcgtcgccgtttcccttgccagcatgctgtcggccgggatctgctttctgtacgccgtgctgcccctgccgggcgtgacggtgctgttcgtgctcagctccatcgcggccgtcatcgt",
+    "SEQUENCE_ID" : "fig|84112.310.peg.2",
+    "SEQUENCE_TARGET" : "13,478",
+    "PRIMER_TASK" : "generic",
+    "PRIMER_PICK_LEFT_PRIMER" : "1",
+    "PRIMER_PICK_INTERNAL_OLIGO" : "1",
+    "PRIMER_PICK_RIGHT_PRIMER" : "1",
+    "PRIMER_OPT_SIZE" : "18",
+    "PRIMER_MIN_SIZE" : "15",
+    "PRIMER_MAX_SIZE" : "21",
+    "PRIMER_MAX_NS_ACCEPTED" : "1",
+    "PRIMER_PRODUCT_SIZE_RANGE" : "200-400",
+    "P3_FILE_FLAG" : "1",
+    "PRIMER_EXPLAIN_FLAG" : "1"
+}
