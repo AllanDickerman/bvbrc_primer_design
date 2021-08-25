@@ -21,16 +21,16 @@
         },
         {
             "id": "input_type",
-            "label": "text|workplace_file|seq_id",
+            "label": "How to interpret sequence_input",
             "required": 1,
-            "desc": "How to interpret sequence_input.",
-            "type": "string"
+            "desc": "How to interpret sequence_input: 'sequence_text'|'workplace_fasta'|'database_id'",
+            "type": ["sequence_text", "workplace_fasta", "database_id"]
         },
         {
             "id": "sequence_input",
-            "label": "text|workplace file|seq_id",
+            "label": "DNA sequence data",
             "required": 1,
-            "desc": "Sequence which may be raw text, a workspace file, or a database identifier.",
+            "desc": "Sequence may be text, workspace file, or database id as per input_type.",
             "type": "string"
         },
         {
