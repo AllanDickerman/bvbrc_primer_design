@@ -83,6 +83,13 @@
             ]
         },
         {
+            "id": "PRIMER_PICK_INTERNAL_OLIGO",
+            "label": "Pick an internal oligo (hybridization probe).",
+            "desc": "If the associated value = 1 (non-0), then Primer3 will attempt to pick an internal oligo (hybridization probe to detect the PCR product).",
+            "required": 0,
+            "type": "number"
+        },
+        {
             "id": "PRIMER_PRODUCT_SIZE_RANGE",
             "label": "Min, max product size",
             "required": 0,
