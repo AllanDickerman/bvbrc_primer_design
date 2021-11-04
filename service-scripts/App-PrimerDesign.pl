@@ -63,8 +63,6 @@ sub design_primers {
    
     run("echo $tmpdir && ls -ltr $tmpdir");
 
-    $params->{PRIMER_PICK_INTERNAL_OLIGO} = 1;
-
     if ($params->{input_type} eq "sequence_text") {
         $params->{SEQUENCE_TEMPLATE} = $params->{sequence_input};
     }
