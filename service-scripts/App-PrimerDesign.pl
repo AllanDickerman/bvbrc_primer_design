@@ -63,6 +63,8 @@ sub design_primers {
    
     run("echo $tmpdir && ls -ltr $tmpdir");
 
+    $params->{PRIMER_PICK_INTERNAL_OLIGO} = 1;
+
     if ($params->{input_type} eq "sequence_text") {
         $params->{SEQUENCE_TEMPLATE} = $params->{sequence_input};
     }
@@ -137,7 +139,7 @@ sub design_primers {
     #my ($out, $err) = run_cmd(\@command);
     #print STDERR "STDOUT:\n$out\n";
     #print STDERR "STDERR:\n$err\n";
-    my %resultsHash = {};
+    my %resultsHash;
     print STDERR "Now showing results from runPrimer3\n";
     open F, $primer3_output_file;
     while (<F>)
@@ -147,82 +149,33 @@ sub design_primers {
         $resultsHash{$key} = $val;
         print "results: $key\tvalue=$resultsHash{$key}\n" if $debug;
     }
-    my $pair_count = 0;
-    # Figure out if any primers were returned and
-    # write a helping page if no primers are returned  
-    if (defined $resultsHash{"PRIMER_PAIR_NUM_RETURNED"}){
-        $pair_count = $resultsHash{"PRIMER_PAIR_NUM_RETURNED"};
+    my $pair_count = $resultsHash{PRIMER_PAIR_NUM_RETURNED}; 
+
+    if (0) {
+        my $html .= generate_dynamic_html(\%resultsHash);
+        my $html_file = "$tmpdir/$params->{output_file}_dynamic_report.html";
+        open F, ">$html_file";
+        print F $html;
+        close F;
+        push @outputs, [$html_file, "html"];
     }
-    my $html = "<html>\n";
 
-
-    if ($pair_count > 0) {
-        my %html_param;
-        $html_param{right_primer_color} = "#ff9999";
-        $html_param{left_primer_color} = "#ffff66";
-        $html_param{target_sequence_color} = "#ccffcc";
-        $html_param{row_alt_color} = "#dddddd";
-        $html_param{row_highlight_color} = "#9999ff";
-
-    $html .= qq(<head>
-<style>
-h3  {
-    font-size: 1.2em;
-    margin-bottom: .2em;
-}
-
-table {
-    font-family:sans-serif; 
-    margin: .2em;
-}
-
-table.numbers {
-    text-align:right;
-}
-
-th {
-    padding: .1em;
-    text-align: left;
-}
-
-td {
-    padding-left: .5em;
-    padding-right: .5em;
-}
-.primer3plus_left_primer { background-color: $html_param{left_primer_color} }
-.primer3plus_right_primer { background-color: $html_param{right_primer_color} }
-.primer3plus_target_sequence { background-color: $html_param{target_sequence_color} }
-
-</style>
-</head>
-<body>
-);
-
-        $html .= generate_javascript(\%html_param);
-
-        $html .= generate_html_all_pairs_view(\%resultsHash, \%html_param);	
-    }
-    else {
-        $html = "Problem: no primer pairs found.\n";
-        
-        my $error_messages = "";
-        for my $key (sort keys %resultsHash) {
-            $error_messages .= "<li>$key:&nbsp;&nbsp;$resultsHash{$key}\n" if $key =~ /ERROR/i;
-        }
-        if ($error_messages) {
-            $html .= "<p>Error messages from Primer3:<ul>\n";
-            $html .= $error_messages;
-            $html .= "</ul>\n";
-        }
-    }
-    $html .= "</body></html>\n";
-    my $html_file = "$tmpdir/$params->{output_file}_report.html";
+    my $html = format_primer3_output_to_single_html_table(\%resultsHash);
+    my $html_file = "$tmpdir/$params->{output_file}_table.html";
     open F, ">$html_file";
     print F $html;
     close F;
-
     push @outputs, [$html_file, "html"];
+
+    my $fasta .= write_primers_to_fasta(\%resultsHash);
+    my $fasta_file = "$tmpdir/$params->{output_file}_primers.fasta";
+    open F, ">$fasta_file";
+    print F $fasta;
+    close F;
+    push @outputs, [$fasta_file, "Feature_DNA_FASTA"];
+
     push @outputs, [$primer3_output_file, "txt"];
+    push @outputs, [$p3params_file, "txt"];
 
     print STDERR '\@outputs = '. Dumper(\@outputs);
     my $output_folder = $app->result_folder();
@@ -257,6 +210,237 @@ td {
     chdir($cwd);
     my $time2 = `date`;
     #print STDERR ("Start: $time1"."End:   $time2"r. "$tmpdir/DONE\n");
+}
+
+sub write_primers_to_fasta {
+    my $results = shift;
+    my $num_pairs = $results->{"PRIMER_PAIR_NUM_RETURNED"};
+    my $retval = "";
+    for my $i (0 .. $num_pairs-1) {
+        my $display_index = $i+1;
+        $retval .= ">Primer_" . $display_index . "_forward\n" . $results->{"PRIMER_LEFT_${i}_SEQUENCE"} . "\n";
+        $retval .= ">Primer_" . $display_index . "_reverse\n" . $results->{"PRIMER_RIGHT_${i}_SEQUENCE"} . "\n";
+        $retval .= ">Internal_oligo_" . $display_index . "\n" . $results->{"PRIMER_INTERNAL_${i}_SEQUENCE"} . "\n";
+    }
+    return $retval;
+}
+
+sub format_primer3_output_to_single_html_table {
+    my $results = shift;
+    print "format to table: results = $results\n";
+    my $html = "";
+    # Figure out if any primers were returned and
+    # write a helping page if no primers are returned  
+    unless ($results->{"PRIMER_PAIR_NUM_RETURNED"}) {
+        $html = "No primers were returned.\n";
+        return $html
+    }
+    $html .= qq(<head>
+<style>
+h3  {
+    font-size: 1.2em;
+    margin-bottom: .2em;
+}
+table, th, td {
+  border: 1px solid black;
+}
+td.empty {
+    background: lightgray;
+    }
+
+td.sep {
+	background: gray;
+	height: 0.5em;
+	}
+
+table {
+    font-family:sans-serif; 
+    margin: .2em;
+    border-collapse: collapse;
+}
+
+td.num {
+    text-align:right;
+}
+
+th {
+    padding: .1em;
+    text-align: left;
+}
+
+td {
+    padding-left: .5em;
+    padding-right: .5em;
+}
+</style>
+</head>
+<body>
+);
+    $html .= "Sequence ID: $results->{SEQUENCE_ID}<br>\n" if exists $results->{SEQUENCE_ID};
+    $html .= "Sequence length: " . length($results->{SEQUENCE_TEMPLATE}) . "<br>\n";
+    if (exists $results->{TARGET_REGION}) {
+        $html .= "Target region:";
+        for my $pair (@{$results->{TARGET_REGION}}) { 
+            $html .= " " . join(",", @$pair);
+        }
+        $html .= "<br>\n";
+    }  
+    if (exists $results->{INCLUDED_REGION}) {
+        $html .= "Included region:";
+        for my $pair (@{$results->{INCLUDED_REGION}}) { 
+            $html .= " " . join(",", @$pair);
+            }
+        $html .= "<br>\n";
+    }  
+    if (0 and exists $results->{PRIMER_PRODUCT_SIZE_RANGE}) {
+        $html .= "Product size range: " . $results->{PRIMER_PRODUCT_SIZE_RANGE};
+        $html .= "<br>\n";
+    }  
+    if (0 and exists $results->{PRIMER_MAX_SIZE}) {
+        $html .= "Primer max length: " . $results->{PRIMER_MAX_SIZE};
+        $html .= "<br>\n";
+    }  
+    if (0 and exists $results->{PRIMER_MIN_SIZE}) {
+        $html .= "Primer min length: " . $results->{PRIMER_MIN_SIZE};
+        $html .= "<br>\n";
+    } 
+    $html .= "<smaller>Note: sequence positions and primer indexes are 1-based here, but 0-based in Primer3 output.</smaller><br>\n"; 
+    $html .= "<table>\n";
+    $html .= "<tr><th>Pair#</th><th>Region</th><th>Sequence (5'->3')</th><th class='primer'>Start</th><th class='primer'>End</th><th class='primer'>Length</th><th class='primer'>Tm</th><th class='primer'>GC%</th><th class='primer'>Compl. <br>any</th><th class='primer'>Compl. <br>end</th></tr>\n";
+    my $pair_count = $results->{"PRIMER_PAIR_NUM_RETURNED"};
+    for my $index (0..($pair_count-1)) {
+	    $html .= "<tr>";
+	    my ($start, $length) = split(",", $results->{"PRIMER_LEFT_${index}"});
+	    my $end = $start + $length;
+        $start += 1; # translate to 1-based coordinates for user
+        my $product_start = $start;
+	    my $num_rows = 3;
+	    $num_rows++ if exists $results->{"PRIMER_INTERNAL_$index"};
+	    $html .= "<td rowspan='$num_rows'>" . ($index + 1) . "</td>\t<td class='primer'>Forward primer</td>\t";
+            $html .= "<td>" . $results->{"PRIMER_LEFT_${index}_SEQUENCE"} . "</td>\t";
+            $html .= "<td class='num'>$start</td>\t";
+            $html .= "<td class='num'>$end</td>\t";
+            $html .= "<td class='num'>$length</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_TM"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_GC_PERCENT"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_SELF_ANY_TH"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_SELF_END_TH"} . "</td>\n";
+	    $html .= "</tr>\n";
+
+	    ($start, $length) = split(",", $results->{"PRIMER_RIGHT_${index}"});
+        $start += 1; # translate to 1-based coordinates for user
+        my $product_end = $start;
+	    my $end = $start - $length + 1;
+	    $html .= "<td>Reverse primer</td>\t";
+            $html .= "<td>" . $results->{"PRIMER_RIGHT_${index}_SEQUENCE"} . "</td>\t";
+            $html .= "<td class='num'>$start</td>\t";
+            $html .= "<td class='num'>$end</td>\t";
+            $html .= "<td class='num'>$length</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_TM"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_GC_PERCENT"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_SELF_ANY_TH"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_SELF_END_TH"} . "</td>\n";
+	    $html .= "</tr>\n";
+
+	    if (exists $results->{"PRIMER_INTERNAL_${index}"}) {
+		($start, $length) = split(",", $results->{"PRIMER_INTERNAL_${index}"});
+		my $end = $start + $length;
+        $start += 1; # translate to 1-based coordinates for user
+		$html .= "<td>Internal oligo</td>\t";
+		$html .= "<td>" . $results->{"PRIMER_INTERNAL_${index}_SEQUENCE"} . "</td>\t";
+		$html .= "<td class='num'>$start</td>\t";
+		$html .= "<td class='num'>$end</td>\t";
+		$html .= "<td class='num'>$length</td>\t";
+		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_TM"} . "</td>\t";
+		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_GC_PERCENT"} . "</td>\t";
+		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_ANY_TH"} . "</td>\t";
+		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_END_TH"} . "</td>\n";
+		$html .= "</tr>\n";
+	    }
+
+	    $html .= "<td>Product/Primer pair</td>\t";
+            $html .= "<td class='empty'></td>\t";
+            $html .= "<td class='num'>$product_start</td>\t";
+            $html .= "<td class='num'>$product_end</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_PAIR_${index}_PRODUCT_SIZE"} . "</td>\t";
+            $html .= "<td class='empty'></td>\t";
+            $html .= "<td class='empty'></td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_PAIR_${index}_COMPL_ANY_TH"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_PAIR_${index}_COMPL_END_TH"} . "</td>\n";
+	    $html .= "</tr>\n";
+	    if ($index < ($pair_count-1)) {
+		    $html .= "<tr><td class='sep' colspan='10'></td></tr>\n";
+	    }
+    }
+    $html .= "</table>\n";
+    return $html;
+}
+
+sub generate_dynamic_html {
+    my $resultsHash = shift;
+    print STDERR "in generate_dynamic_html: resultsHash = $resultsHash\n";
+    print STDERR "num primers = $resultsHash->{PRIMER_PAIR_NUM_RETURNED}\n";
+    if ($resultsHash->{PRIMER_PAIR_NUM_RETURNED} == 0) {
+        my $html = "Problem: no primer pairs returned.\n";
+        
+        my $error_messages = "";
+        for my $key (sort keys %$resultsHash) {
+            $error_messages .= "<li>$key:&nbsp;&nbsp;$resultsHash->{$key}\n" if $key =~ /ERROR/i;
+        }
+        if ($error_messages) {
+            $html .= "<p>Error messages from Primer3:<ul>\n";
+            $html .= $error_messages;
+            $html .= "</ul>\n";
+        }
+        return $html
+    }
+
+    my %html_param  = (
+    "right_primer_color" => "#ff9999",
+    "left_primer_color" => "#ffff66",
+    "target_sequence_color" => "#ccffcc",
+    "row_alt_color" => "#dddddd",
+    "row_highlight_color" => "#9999ff" );
+
+    my $html .= qq(<html>\n<head>
+<style>
+h3  {
+    font-size: 1.2em;
+    margin-bottom: .2em;
+}
+
+table {
+    font-family:sans-serif; 
+    margin: .2em;
+}
+
+table.numbers {
+    text-align:right;
+}
+
+th {
+    padding: .1em;
+    text-align: left;
+}
+
+td {
+    padding-left: .5em;
+    padding-right: .5em;
+}
+.primer3plus_left_primer { background-color: $html_param{left_primer_color} }
+.primer3plus_right_primer { background-color: $html_param{right_primer_color} }
+.primer3plus_target_sequence { background-color: $html_param{target_sequence_color} }
+
+</style>
+</head>
+<body>
+);
+
+    $html .= generate_javascript(\%html_param);
+
+    $html .= generate_html_all_pairs_view($resultsHash, \%html_param);	
+
+    $html .= "</body></html>\n";
 }
 
 sub generate_javascript {
@@ -309,6 +493,8 @@ sub generate_html_all_pairs_view {
     my $html_param = shift;
     my $pair_count = $results->{PRIMER_PAIR_NUM_RETURNED};
     my $html .= "<div id=\"primer3_results_container\" onload='update_current_pair(0)'>\n";
+    $html .= "results: $results <br>\n";
+    $html .= "num primers: $pair_count == $results->{PRIMER_PAIR_NUM_RETURNED} <br>\n";
     $html .= "<h3>Select Primer Pair:</b> <select id=\"select_pair_control\" onchange='update_current_pair(this.value)'>\n";
     for (my $i=0; $i < $pair_count; $i++) {
         $html .= "<option value=\"$i\">$i</option>\n";
@@ -470,7 +656,7 @@ sub create_primer_pair_on_sequence_html {
   $format =~ s/\w/N/g;
 
   $seqLength = length ($sequence);
-  $firstBase = $results->{"PRIMER_FIRST_BASE_INDEX"};
+  $firstBase = 1; #$results->{"PRIMER_FIRST_BASE_INDEX"};
   
   if ((defined $results->{"SEQUENCE_TEMPLATE"})and ($results->{"SEQUENCE_TEMPLATE"} ne "")) {
 
