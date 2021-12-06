@@ -112,7 +112,7 @@ sub design_primers {
     for my $param (keys %{$params}) {
         if ($param !~ /^output/) {
             my $value = $params->{$param};
-            next if $value =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
+            next if $param =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
             print F "${param}=$value\n";
         }
     }
