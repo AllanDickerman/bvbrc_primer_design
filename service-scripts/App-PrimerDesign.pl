@@ -111,8 +111,8 @@ sub design_primers {
     print STDERR "params->{parameters} = $params\n";
     for my $param (keys %{$params}) {
         if ($param !~ /^output/) {
-            my $value = $params->{$param};
             next if $param =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
+            my $value = $params->{$param};
             print F "${param}=$value\n";
         }
     }
@@ -128,8 +128,8 @@ sub design_primers {
     open PROC, "|$command";
     for my $param (keys %{$params}) {
         if ($param !~ /^output/) {
+            next if $param =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
             my $value = $params->{$param};
-            next if $value =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
             print PROC "${param}=$value\n";
             print "PROC ${param}=$value\n";
         }
