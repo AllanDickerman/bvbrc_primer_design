@@ -304,9 +304,20 @@ td {
         $html .= "Primer min length: " . $results->{PRIMER_MIN_SIZE};
         $html .= "<br>\n";
     } 
-    $html .= "<smaller>Note: sequence positions and primer indexes are 1-based here, but 0-based in Primer3 output.</smaller><br>\n"; 
+    $html .= "<small>Note: sequence positions and pair indexes are 1-based here, but 0-based in Primer3 output.</small><br>\n"; 
     $html .= "<table>\n";
-    $html .= "<tr><th>Pair#</th><th>Region</th><th>Sequence (5'->3')</th><th class='primer'>Start</th><th class='primer'>End</th><th class='primer'>Length</th><th class='primer'>Tm</th><th class='primer'>GC%</th><th class='primer'>Compl. <br>any</th><th class='primer'>Compl. <br>end</th></tr>\n";
+    $html .= "<tr><th>Pair#</th>\n";
+    #<th>Region</th><th>Sequence (5'->3')</th><th class='primer'>Start</th><th class='primer'>End</th><th class='primer'>Length</th><th class='primer'>Tm</th><th class='primer'>GC%</th><th class='primer'>Compl. <br>any</th><th class='primer'>Compl. <br>end</th></tr>\n";
+    $html .= "<th title=\"Class of region.\">Region</th>\n";
+    $html .= "<th title=\"Sequence of the oligomer.\">Sequence (5&prime;&rarr;3&prime;)</th>\n";
+    $html .= "<th title=\"Start position in target sequence. (1-based)\">Start</th>\n";
+    $html .= "<th title=\"End position in target sequence. (1-based)\">End</th>\n";
+    $html .= "<th title=\"Length in bases.\">Len</th>\n";
+    $html .= "<th title=\"The melting temperature for the selected oligomer.\">&nbsp;T<sub>m</sub> &nbsp;</th>\n";
+    $html .= "<th title=\"Percent GC for the selected oligo.\">GC%</th>\n";
+    $html .= "<th title=\"Tendency of a primer to bind to itself, interfering with target sequence binding.\">Any <br>Compl.</th>\n";
+    $html .= "<th title=\"The tendency of the 3'-END to bind an identical primer, allowing it to form a primer-dimer.\">End <br>Compl.</th>";
+    $html .= "</tr>\n";
     my $pair_count = $results->{"PRIMER_PAIR_NUM_RETURNED"};
     for my $index (0..($pair_count-1)) {
 	    $html .= "<tr>";
@@ -321,8 +332,8 @@ td {
             $html .= "<td class='num'>$start</td>\t";
             $html .= "<td class='num'>$end</td>\t";
             $html .= "<td class='num'>$length</td>\t";
-            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_TM"} . "</td>\t";
-            $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_GC_PERCENT"} . "</td>\t";
+            $html .= "<td class='num'>" . sprintf("%.2f", $results->{"PRIMER_LEFT_${index}_TM"}) . "</td>\t";
+            $html .= "<td class='num'>" . sprintf("%d", $results->{"PRIMER_LEFT_${index}_GC_PERCENT"}) . "</td>\t";
             $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_SELF_ANY_TH"} . "</td>\t";
             $html .= "<td class='num'>" . $results->{"PRIMER_LEFT_${index}_SELF_END_TH"} . "</td>\n";
 	    $html .= "</tr>\n";
@@ -336,26 +347,26 @@ td {
             $html .= "<td class='num'>$start</td>\t";
             $html .= "<td class='num'>$end</td>\t";
             $html .= "<td class='num'>$length</td>\t";
-            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_TM"} . "</td>\t";
-            $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_GC_PERCENT"} . "</td>\t";
+            $html .= "<td class='num'>" . sprintf("%.2f", $results->{"PRIMER_RIGHT_${index}_TM"}) . "</td>\t";
+            $html .= "<td class='num'>" . sprintf("%d", $results->{"PRIMER_RIGHT_${index}_GC_PERCENT"}) . "</td>\t";
             $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_SELF_ANY_TH"} . "</td>\t";
             $html .= "<td class='num'>" . $results->{"PRIMER_RIGHT_${index}_SELF_END_TH"} . "</td>\n";
 	    $html .= "</tr>\n";
 
 	    if (exists $results->{"PRIMER_INTERNAL_${index}"}) {
 		($start, $length) = split(",", $results->{"PRIMER_INTERNAL_${index}"});
-		my $end = $start + $length;
-        $start += 1; # translate to 1-based coordinates for user
-		$html .= "<td>Internal oligo</td>\t";
-		$html .= "<td>" . $results->{"PRIMER_INTERNAL_${index}_SEQUENCE"} . "</td>\t";
-		$html .= "<td class='num'>$start</td>\t";
-		$html .= "<td class='num'>$end</td>\t";
-		$html .= "<td class='num'>$length</td>\t";
-		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_TM"} . "</td>\t";
-		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_GC_PERCENT"} . "</td>\t";
-		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_ANY_TH"} . "</td>\t";
-		$html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_END_TH"} . "</td>\n";
-		$html .= "</tr>\n";
+            my $end = $start + $length;
+            $start += 1; # translate to 1-based coordinates for user
+            $html .= "<td>Internal oligo</td>\t";
+            $html .= "<td>" . $results->{"PRIMER_INTERNAL_${index}_SEQUENCE"} . "</td>\t";
+            $html .= "<td class='num'>$start</td>\t";
+            $html .= "<td class='num'>$end</td>\t";
+            $html .= "<td class='num'>$length</td>\t";
+            $html .= "<td class='num'>" . sprintf("%.2f", $results->{"PRIMER_INTERNAL_${index}_TM"}) . "</td>\t";
+            $html .= "<td class='num'>" . sprintf("%d", $results->{"PRIMER_INTERNAL_${index}_GC_PERCENT"}) . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_ANY_TH"} . "</td>\t";
+            $html .= "<td class='num'>" . $results->{"PRIMER_INTERNAL_${index}_SELF_END_TH"} . "</td>\n";
+            $html .= "</tr>\n";
 	    }
 
 	    $html .= "<td>Product/Primer pair</td>\t";
