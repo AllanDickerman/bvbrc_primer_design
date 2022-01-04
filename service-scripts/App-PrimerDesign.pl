@@ -69,7 +69,7 @@ sub design_primers {
     elsif ($params->{input_type} eq "workspace_fasta") {
         my $fasta_file = $params->{sequence_input};
         $fasta_file =~ s/.*\///; #should yield basename
-        my @cmd = ("p3-cp", "ws:" . $params->{SEQUENCE_WORKSPACE_FASTA}, $fasta_file);
+        my @cmd = ("p3-cp", "ws:" . $params->{sequence_input}, $fasta_file);
         print STDERR "@cmd\n";
         my $ok = IPC::Run::run(\@cmd);
         if (!$ok)
