@@ -63,7 +63,7 @@ sub design_primers {
    
     run("echo $tmpdir && ls -ltr $tmpdir");
 
-    if ($params->{input_type} eq "sequence_input") {
+    if ($params->{input_type} eq "sequence_text") {
         $params->{SEQUENCE_TEMPLATE} = $params->{sequence_input};
     }
     elsif ($params->{input_type} eq "workspace_fasta") {
