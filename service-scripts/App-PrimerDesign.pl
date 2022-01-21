@@ -50,6 +50,11 @@ sub preflight
 
 sub design_primers {
     my ($app, $app_def, $raw_params, $params) = @_;
+    my %primer3_params; # copy the params that need to be passed to primer3_core
+    for my $name (keys %{$params}) {
+        next if $name =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
+        $primer3_params{$name} = $params->{$name};
+    }
 
     my $time1 = `date`;
     print "Proc DesignPrimers ", Dumper($app_def, $raw_params, $params);
@@ -64,32 +69,33 @@ sub design_primers {
     run("echo $tmpdir && ls -ltr $tmpdir");
 
     if ($params->{input_type} eq "sequence_text") {
-        $params->{SEQUENCE_TEMPLATE} = $params->{sequence_input};
+        $primer3_params{SEQUENCE_TEMPLATE} = $params->{sequence_input};
     }
     elsif ($params->{input_type} eq "workspace_fasta") {
-        my $fasta_file = $params->{sequence_input};
-        $fasta_file =~ s/.*\///; #should yield basename
-        my @cmd = ("p3-cp", "ws:" . $params->{sequence_input}, $fasta_file);
+        my $fasta_input_file = $params->{sequence_input};
+        $fasta_input_file =~ s/.*\///; #should yield basename
+        my @cmd = ("p3-cp", "ws:" . $params->{sequence_input}, $fasta_input_file);
         print STDERR "@cmd\n";
         my $ok = IPC::Run::run(\@cmd);
         if (!$ok)
         {
             warn "Error $? copying output with @cmd\n";
         }
-        open F, $fasta_file;
+        open F, $fasta_input_file;
         my $seq = '';
         $_ = <F>;
-        $_ =~ />(\S+)/ or warn "$fasta_file does not look like fasta";
-        print STDERR "Reading sequence from workspace file $params->{SEQUENCE_WORKSPACE_FASTA}\n";
-        print STDERR "setting SEQUENCE_ID to $1 from workspace file\n";
-        print STDERR "(was $params->{SEQUENCE_ID}\n" if $params->{SEQUENCE_ID};
-        $params->{SEQUENCE_ID} = $1;
+        $_ =~ />(\S+)/ or die "$fasta_input_file does not look like fasta";
+        $primer3_params{SEQUENCE_ID} = $1;
+        print STDERR "Reading sequence from workspace file $params->{workspace_fasta}\n";
+        print STDERR "setting SEQUENCE_ID to $primer3_params{SEQUENCE_ID} from workspace file\n";
+        print STDERR "(was $params->{SEQUENCE_ID})\n" if $params->{SEQUENCE_ID} and $params->{SEQUENCE_ID} ne $primer3_params{SEQUENCE_ID};
         while (<F>) {
             last if /^>/;
             chomp;
             $seq .= $_;
         }
-        $params->{SEQUENCE_TEMPLATE} = $seq;
+        $primer3_params{SEQUENCE_TEMPLATE} = $seq;
+        close F;
     }
     elsif ($params->{input_type} eq "database_id") {
         print STDERR "Input type is 'database_id' which is not supported yet.";
@@ -102,43 +108,29 @@ sub design_primers {
 
     if ($params->{SEQUENCE_TEMPLATE} =~ /[[\]<>{}-]/) {
         print STDERR "Need to handle sequence markups\n" if $debug;
-        handle_sequence_region_markup($params);
+        handle_sequence_region_markup($params, \%primer3_params);
     }
 
-
+    # write primer3 input to file
     my $p3params_file = "$params->{output_file}_Primer3_input.txt";
     open F, ">$tmpdir/$p3params_file";
-    print STDERR "params->{parameters} = $params\n";
-    for my $param (keys %{$params}) {
-        if ($param !~ /^output/) {
-            next if $param =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
-            my $value = $params->{$param};
-            print F "${param}=$value\n";
-        }
+    print STDERR "primer3_params = %primer3_params\n";
+    for my $name (keys %primer3_params) {
+        print F "$name=$primer3_params{$name}\n";
     }
-    print F "=\n";
+    print F "=\n"; #marks end of input to primer3
     close F;
 
     my $cwd = getcwd();
     chdir($tmpdir);
 
     my $primer3_output_file = "$params->{output_file}_Primer3_output.txt";
-    my $command = "primer3_core --output $primer3_output_file";
-    print "run command: $command\n";
-    open PROC, "|$command";
-    for my $param (keys %{$params}) {
-        if ($param !~ /^output/) {
-            next if $param =~ /^[a-z]/; # parameters with lower-case keys are not meant for primer3_core
-            my $value = $params->{$param};
-            print PROC "${param}=$value\n";
-            print "PROC ${param}=$value\n";
-        }
-    }
-    print PROC "=\n";
-    close PROC;
-    #my ($out, $err) = run_cmd(\@command);
-    #print STDERR "STDOUT:\n$out\n";
-    #print STDERR "STDERR:\n$err\n";
+    my @command = ("primer3_core", "--output", $primer3_output_file);
+    print "run command: @command\n";
+    my $out = run(\@command, "<", $p3params_file);
+    #my ($out, $err) = run_cmd(", @command));
+    #print STDERR "\nSTDOUT:\n$out\n";
+    #print STDERR "\nSTDERR:\n$err\n";
     my %resultsHash;
     print STDERR "Now showing results from runPrimer3\n";
     open F, $primer3_output_file;
@@ -842,7 +834,7 @@ sub addRegion {
 }
 
 sub handle_sequence_region_markup {
-    my $params = shift;
+    my ($params, $primer3_params) = @_;
     my %delim_field = ('<>' => 'SEQUENCE_EXCLUDED_REGION',
         '{}' => 'SEQUENCE_INCLUDED_REGION',
         '[]' => 'SEQUENCE_TARGET',
@@ -850,20 +842,19 @@ sub handle_sequence_region_markup {
     for my $delim (sort keys %delim_field) {
         my $regex = "\\".substr($delim, 0, 1);
         if ($params->{SEQUENCE_TEMPLATE} =~ /$regex/) {
-            extract_sequence_delim($params, $delim, $delim_field{$delim});
+            extract_sequence_delim($params->{SEQUENCE_TEMPLATE}, $primer3_params, $delim, $delim_field{$delim});
         }
     }
     $params->{SEQUENCE_TEMPLATE} =~ s/[{}[\]<>-]//g;
 }
 
 sub extract_sequence_delim {
-    my ($params, $delim, $field) = @_;
+    my ($seq, $primer3_params, $delim, $field) = @_;
     my $regex = "[".join("\\", split('', $delim))."]";
     my $other_delims = "{}[]<>-";
     $other_delims =~ s/$regex//g;
     my $other_regex = "[".join("\\", split('', $other_delims))."]";
     print STDERR "extract_sequence_delim: delim=$delim field=$field regex=$regex other_regex=$other_regex\n" if $debug;
-    my $seq = $params->{SEQUENCE_TEMPLATE};
     $seq =~ s/$other_regex//g;
     #print STDERR "minus other delims: $seq\n" if $debug;
     my @delim_positions;
@@ -896,7 +887,7 @@ sub extract_sequence_delim {
     }
     my $position_string = join(" ", @delim_positions);
     print "\tbased on these delimiters ($delim) in input sequence, $field positions are $position_string\n";
-    $params->{$field} = $position_string;
+    $primer3_params->{$field} = $position_string;
 }
 
 sub run_cmd {
