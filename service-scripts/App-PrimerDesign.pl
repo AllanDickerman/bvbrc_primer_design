@@ -106,9 +106,9 @@ sub design_primers {
         exit(1);
     }    
 
-    if ($params->{SEQUENCE_TEMPLATE} =~ /[[\]<>{}-]/) {
+    if ($primer3_params{SEQUENCE_TEMPLATE} =~ /[[\]<>{}-]/) {
         print STDERR "Need to handle sequence markups\n" if $debug;
-        handle_sequence_region_markup($params, \%primer3_params);
+        handle_sequence_region_markup(\%primer3_params);
     }
 
     # write primer3 input to file
@@ -834,60 +834,53 @@ sub addRegion {
 }
 
 sub handle_sequence_region_markup {
-    my ($params, $primer3_params) = @_;
-    my %delim_field = ('<>' => 'SEQUENCE_EXCLUDED_REGION',
-        '{}' => 'SEQUENCE_INCLUDED_REGION',
-        '[]' => 'SEQUENCE_TARGET',
-        '-'  => 'SEQUENCE_OVERLAP_JUNCTION_LIST' );
-    for my $delim (sort keys %delim_field) {
-        my $regex = "\\".substr($delim, 0, 1);
-        if ($params->{SEQUENCE_TEMPLATE} =~ /$regex/) {
-            extract_sequence_delim($params->{SEQUENCE_TEMPLATE}, $primer3_params, $delim, $delim_field{$delim});
+    print STDERR "in handle_sequence_region_markup\n" if $debug;
+    my ($primer3_params) = @_;
+    my %region_types;
+    my $seqpos = 0;
+    my $seq_target_start = -1;
+    my $included_region_start = -1;
+    my $excluded_region_start = -1;
+    for my $char (split '', $primer3_params->{SEQUENCE_TEMPLATE}) {
+        if ($char eq '[') {
+            $seq_target_start = $seqpos;
         }
+        elsif ($char eq ']') {
+            if ($seq_target_start >= 0) {
+                my $length = $seqpos - $seq_target_start + 1;
+                $primer3_params->{SEQUENCE_TARGET} .= "$seq_target_start,$length ";
+            }
+            $seq_target_start = -1;
+        }
+        if ($char eq '{') {
+            $included_region_start = $seqpos;
+        }
+        elsif ($char eq '}') {
+            if ($included_region_start >= 0) {
+                my $length = $seqpos - $included_region_start + 1;
+                $primer3_params->{SEQUENCE_INCLUDED_REGION} = "$included_region_start,$length"; #there can be only one
+            }
+            $included_region_start = -1;
+        } 
+        elsif ($char eq '<') {
+            $seq_target_start = $seqpos;
+        }
+        elsif ($char eq '>') {
+            if ($excluded_region_start >= 0) {
+                my $length = $seqpos - $excluded_region_start + 1;
+                $primer3_params->{SEQUENCE_EXCLUDED_REGION} .= "$excluded_region_start,$length ";
+            }
+            $excluded_region_start = -1;
+        }
+        elsif ($char eq '_') {
+            $primer3_params->{SEQUENCE_OVERLAP_JUNCTION_LIST} .= "$seqpos ";
+        }
+        elsif ($char =~ /[ACGT]/i) {
+            $seqpos++;
+        } 
     }
-    $params->{SEQUENCE_TEMPLATE} =~ s/[{}[\]<>-]//g;
-}
-
-sub extract_sequence_delim {
-    my ($seq, $primer3_params, $delim, $field) = @_;
-    my $regex = "[".join("\\", split('', $delim))."]";
-    my $other_delims = "{}[]<>-";
-    $other_delims =~ s/$regex//g;
-    my $other_regex = "[".join("\\", split('', $other_delims))."]";
-    print STDERR "extract_sequence_delim: delim=$delim field=$field regex=$regex other_regex=$other_regex\n" if $debug;
-    $seq =~ s/$other_regex//g;
-    #print STDERR "minus other delims: $seq\n" if $debug;
-    my @delim_positions;
-    my $offset_adjust = 0;
-    my $start = undef;
-    while ($seq =~ /$regex/g){
-        my $curpos = pos($seq);
-        $offset_adjust++;
-        print STDERR "\tgot $&, offset_adjust=$offset_adjust, start=$start\n" if $debug;
-
-        if ($& eq substr($delim, 0, 1)) { # an open delimiter
-            if (defined $start) {
-                print STDERR "Problem with sequence markup: two opens in a row $&\n";
-                return 1;
-            }
-            $start = pos($seq) - $offset_adjust;
-            if (length($delim) == 1) {
-                push @delim_positions, "$start";
-                $start = undef; # leave undefined because start-length is not needed for single delim
-            }
-        }
-        elsif ($& eq substr($delim, 1, 1)) { # a close delimiter
-            unless (defined $start) {
-                print STDERR "Problem with sequence markup: close without an open $&\n";
-                return 1;
-            }
-            my $length = pos($seq) - $offset_adjust - $start;
-            push @delim_positions, "$start,$length";
-        }
-    }
-    my $position_string = join(" ", @delim_positions);
-    print "\tbased on these delimiters ($delim) in input sequence, $field positions are $position_string\n";
-    $primer3_params->{$field} = $position_string;
+    # now remove all non-nucleotide characters
+    $primer3_params->{SEQUENCE_TEMPLATE} =~ s/[^ACGTacgt]//g;
 }
 
 sub run_cmd {
