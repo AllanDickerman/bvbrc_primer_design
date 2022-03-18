@@ -848,7 +848,8 @@ sub handle_sequence_region_markup {
         elsif ($char eq ']') {
             if ($seq_target_start >= 0) {
                 my $length = $seqpos - $seq_target_start + 1;
-                $primer3_params->{SEQUENCE_TARGET} .= "$seq_target_start,$length ";
+                $primer3_params->{SEQUENCE_TARGET} .= " $seq_target_start,$length ";
+                print STDERR "updated SEQUENCE_TARGET to $primer3_params->{SEQUENCE_TARGET}\n" if $debug;
             }
             $seq_target_start = -1;
         }
@@ -859,21 +860,23 @@ sub handle_sequence_region_markup {
             if ($included_region_start >= 0) {
                 my $length = $seqpos - $included_region_start + 1;
                 $primer3_params->{SEQUENCE_INCLUDED_REGION} = "$included_region_start,$length"; #there can be only one
+                print STDERR "updated SEQUENCE_INCLUDED_REGION to $primer3_params->{SEQUENCE_INCLUDED_REGION}\n" if $debug;
             }
             $included_region_start = -1;
         } 
         elsif ($char eq '<') {
-            $seq_target_start = $seqpos;
+            $excluded_region_start = $seqpos;
         }
         elsif ($char eq '>') {
             if ($excluded_region_start >= 0) {
                 my $length = $seqpos - $excluded_region_start + 1;
-                $primer3_params->{SEQUENCE_EXCLUDED_REGION} .= "$excluded_region_start,$length ";
+                $primer3_params->{SEQUENCE_EXCLUDED_REGION} .= " $excluded_region_start,$length ";
+                print STDERR "updated SEQUENCE_EXCLUDED_REGION to $primer3_params->{SEQUENCE_EXCLUDED_REGION}\n" if $debug;
             }
             $excluded_region_start = -1;
         }
         elsif ($char eq '_') {
-            $primer3_params->{SEQUENCE_OVERLAP_JUNCTION_LIST} .= "$seqpos ";
+            $primer3_params->{SEQUENCE_OVERLAP_JUNCTION_LIST} .= " $seqpos ";
         }
         elsif ($char =~ /[ACGT]/i) {
             $seqpos++;
