@@ -159,12 +159,14 @@ sub design_primers {
     close F;
     push @outputs, [$html_file, "html"];
 
-    my $fasta .= write_primers_to_fasta(\%resultsHash);
-    my $fasta_file = "$tmpdir/$params->{output_file}_primers.fasta";
-    open F, ">$fasta_file";
-    print F $fasta;
-    close F;
-    push @outputs, [$fasta_file, "Feature_DNA_FASTA"];
+    if ($resultsHash{"PRIMER_PAIR_NUM_RETURNED"} > 0) {
+        my $fasta = write_primers_to_fasta(\%resultsHash);
+        my $fasta_file = "$tmpdir/$params->{output_file}_primers.fasta";
+        open F, ">$fasta_file";
+        print F $fasta;
+        close F;
+        push @outputs, [$fasta_file, "Feature_DNA_FASTA"];
+    }
 
     push @outputs, [$primer3_output_file, "txt"];
     push @outputs, [$p3params_file, "txt"];
@@ -875,8 +877,9 @@ sub handle_sequence_region_markup {
             }
             $excluded_region_start = -1;
         }
-        elsif ($char eq '_') {
+        elsif ($char eq '-') {
             $primer3_params->{SEQUENCE_OVERLAP_JUNCTION_LIST} .= " $seqpos ";
+            print STDERR "updated SEQUENCE_OVERLAP_JUNCTION_LIST to $primer3_params->{SEQUENCE_OVERLAP_JUNCTION_LIST}\n" if $debug;
         }
         elsif ($char =~ /[ACGT]/i) {
             $seqpos++;
