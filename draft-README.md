@@ -18,6 +18,7 @@ This module provides the following application specfication(s):
 
 ## See also
 
+* [Primer Design Service Quick Reference](https://www.bv-brc.org/docs/quick_references/services/primer_design_service.html)
 * [Primer Design Service](https://www.bv-brc.org/docs/https://bv-brc.org/app/PrimerDesign.html)
 * [Primer Design Service Tutorial](https://www.bv-brc.org/docs//tutorial/primer_design/primer_design.html)
 
