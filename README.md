@@ -4,8 +4,11 @@
 
 The Primer Design Service utilizes Primer3[1-5] to design primers from a given input sequence under a variety of temperature, size, and concentration constraints. 
 Primer3 can be used to design primers for several uses including, PCR (Polymerase Chain Reaction) primers, hybridization probes, and sequencing primers. 
+
 The service accepts a nucleotide sequence (pasted in, or select a FASTA formatted file from the workspace) and allows users to specify design. 
+
 Several options enable deliniating which regions of the sequence to search for optimal primers such as: permited ranges, forbinden ranges, and a target region which primers are required to flank.
+
 After specifying an appropriate output folder and clicking “submit”, the primer design is queued as a “job” to process in the Jobs information box on the bottom right of the page. 
 Once the job has successfully completed, the output file will appear in the workspace, allowing the user to choose from a list of appropriate primer pairs qualified by scores on several optimality criteria. 
 
